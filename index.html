@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>策略矩陣分析工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f3ef;
+    --ink: #1a1a2e;
+    --ink-light: #6b6b8a;
+    --cell-text: #9890b8;
+    --col-header: #7b6fa0;
+    --col-header-light: #c9b8d8;
+    --row-label-bg: #ddd0ee;
+    --row-desc-bg: #f0eaf8;
+    --grid-line: #ddd8f0;
+    --cell-hover: #ede8f8;
+    --shadow: 0 2px 12px rgba(100,80,160,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+
+  h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .header-left { flex: 1; }
+  .theme-picker { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-top: 4px; flex-shrink: 0; }
+  .theme-picker-label { font-size: 0.70rem; color: var(--ink-light); letter-spacing: 0.04em; }
+  .theme-swatches { display: flex; gap: 7px; }
+  .theme-swatch {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 2.5px solid transparent; transition: transform 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  }
+  .theme-swatch:hover { transform: scale(1.18); }
+  .theme-swatch.active { border-color: var(--ink); transform: scale(1.18); }
+  .subtitle { font-size: 0.82rem; color: var(--ink-light); margin-bottom: 20px; max-width: 820px; line-height: 1.6; }
+
+  .panel {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .panel-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--col-header);
+    margin-bottom: 10px;
+  }
+
+  /* ── Strategy title input ── */
+  .strategy-input-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .strategy-title-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .strategy-title-row label {
+    font-size: 0.80rem;
+    font-weight: 600;
+    color: var(--ink-light);
+    white-space: nowrap;
+  }
+  .strategy-title-row input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    border: 1.5px solid var(--grid-line);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.92rem;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--ink);
+    outline: none;
+    background: #faf9fd;
+    transition: border-color 0.15s;
+  }
+  .strategy-title-row input[type="text"]:focus { border-color: var(--col-header); background: white; }
+  .strategy-desc-row textarea {
+    width: 100%;
+    border: 1.5px solid var(--grid-line);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    background: #faf9fd;
+    resize: vertical;
+    min-height: 48px;
+    transition: border-color 0.15s;
+  }
+  .strategy-desc-row textarea:focus { border-color: var(--col-header); background: white; }
+
+  /* ── Competitor bar ── */
+  .competitor-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .competitor-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    border-radius: 999px;
+    font-size: 0.80rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: #f7f5ff;
+    transition: all 0.15s;
+  }
+  .competitor-chip.active { border-color: currentColor; background: white; box-shadow: var(--shadow); }
+  .competitor-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .competitor-chip .chip-name {
+    outline: none; border: none; background: transparent;
+    font-family: inherit; font-size: 0.80rem; font-weight: 500; color: inherit;
+    min-width: 55px; max-width: 100px; cursor: text;
+  }
+  .competitor-chip .chip-name:focus { border-bottom: 1px dashed currentColor; }
+  .competitor-chip .remove { font-size: 0.68rem; opacity: 0.40; cursor: pointer; padding: 0 2px; }
+  .competitor-chip .remove:hover { opacity: 1; }
+
+  .add-competitor { display: flex; gap: 6px; align-items: center; }
+  .add-competitor input {
+    border: 1px solid var(--grid-line); border-radius: 8px;
+    padding: 5px 10px; font-size: 0.80rem; font-family: inherit;
+    width: 110px; outline: none; background: white;
+  }
+  .add-competitor input:focus { border-color: var(--col-header); }
+
+  /* ── Column editor ── */
+  .col-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+  .col-tag {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--col-header-light); border-radius: 6px;
+    padding: 4px 8px; font-size: 0.74rem;
+    cursor: grab; user-select: none;
+    border: 2px solid transparent;
+    transition: box-shadow 0.12s, opacity 0.12s;
+  }
+  .col-tag:active { cursor: grabbing; }
+  .col-tag.drag-over { border-color: var(--col-header); background: #ddd0f0; }
+  .col-tag.dragging { opacity: 0.35; }
+  .col-tag .drag-handle { color: var(--col-header); font-size: 0.65rem; opacity: 0.65; }
+  .col-tag input {
+    border: none; background: transparent; font-family: inherit;
+    font-size: 0.74rem; color: var(--ink); outline: none; width: 68px;
+  }
+  .col-tag input:focus { border-bottom: 1px solid var(--col-header); }
+  .col-tag .col-remove { font-size: 0.62rem; opacity: 0.40; cursor: pointer; }
+  .col-tag .col-remove:hover { opacity: 1; color: #d64545; }
+
+  /* Inline add column */
+  .add-col-inline {
+    display: flex; gap: 5px; align-items: center;
+    background: white; border: 1px dashed var(--col-header);
+    border-radius: 6px; padding: 3px 8px;
+  }
+  .add-col-inline input {
+    border: none; outline: none; font-family: inherit; font-size: 0.74rem;
+    color: var(--ink); width: 80px; background: transparent;
+  }
+  .add-col-inline .confirm-add {
+    background: var(--col-header); color: white; border: none;
+    border-radius: 4px; font-size: 0.68rem; padding: 2px 7px;
+    cursor: pointer; font-family: inherit;
+  }
+  .add-col-inline .confirm-add:hover { background: #6a5e8f; }
+  .add-col-btn {
+    background: white; border: 1px dashed var(--col-header);
+    color: var(--col-header); padding: 4px 10px; border-radius: 6px;
+    font-size: 0.74rem; cursor: pointer; font-family: inherit;
+  }
+  .add-col-btn:hover { background: var(--cell-hover); }
+
+  /* ── Buttons ── */
+  button {
+    padding: 6px 14px; border-radius: 8px; font-size: 0.80rem;
+    font-family: inherit; font-weight: 500; cursor: pointer;
+    border: none; transition: all 0.14s;
+  }
+  .btn-primary { background: var(--col-header); color: white; }
+  .btn-primary:hover { background: #6a5e8f; }
+  .btn-ghost { background: white; border: 1px solid var(--grid-line); color: var(--ink); box-shadow: var(--shadow); }
+  .btn-ghost:hover { background: var(--cell-hover); }
+  .btn-export { background: #4a7c7a; color: white; }
+  .btn-export:hover { background: #3a6b69; }
+  .btn-anim { background: #5a4fcf; color: white; }
+  .btn-anim:hover { background: #4a3fbf; }
+  .btn-anim:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-pptx { background: #c5401a; color: white; }
+  .btn-pptx:hover { background: #a8341a; }
+
+  /* Progress overlay */
+  #exportProgress {
+    display: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.55);
+    align-items: center; justify-content: center;
+  }
+  #exportProgress.active { display: flex; }
+  .progress-box {
+    background: white; border-radius: 14px; padding: 28px 36px;
+    text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    min-width: 280px;
+  }
+  .progress-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: #1a1a2e; }
+  .progress-bar-wrap { background: #eee; border-radius: 99px; height: 10px; overflow: hidden; margin-bottom: 10px; }
+  .progress-bar-fill { height: 100%; background: #5a4fcf; border-radius: 99px; transition: width 0.2s; }
+  .progress-label { font-size: 0.78rem; color: #6b6b8a; }
+  .btn-undo { background: #fff8e8; border: 1px solid #e8c87a; color: #7a5200; }
+  .btn-undo:hover:not(:disabled) { background: #fff0cc; }
+  .btn-undo:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  .action-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .status {
+    font-size: 0.74rem; color: var(--ink-light);
+    padding: 5px 11px; background: white; border-radius: 8px;
+    border: 1px solid var(--grid-line); margin-left: auto;
+  }
+
+  /* ── Mode toggle ── */
+  .mode-toggle {
+    display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--grid-line); box-shadow: var(--shadow);
+  }
+  .mode-btn {
+    padding: 6px 14px; font-size: 0.78rem; font-family: inherit;
+    font-weight: 500; cursor: pointer; border: none;
+    background: white; color: var(--ink-light); transition: all 0.14s;
+    border-radius: 0;
+  }
+  .mode-btn.active { background: var(--col-header); color: white; }
+
+  /* ── Legend ── */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.74rem; color: var(--ink-light); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-line { width: 26px; height: 3px; border-radius: 2px; }
+
+  /* ── Matrix ── */
+  .matrix-wrapper {
+    overflow-x: auto; background: white;
+    border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 14px;
+  }
+
+  #lineCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 5;
+  }
+
+  .matrix-container { position: relative; display: inline-block; min-width: 100%; }
+
+  table { border-collapse: collapse; font-size: 0.77rem; width: 100%; }
+  th, td { border: 1px solid var(--grid-line); text-align: center; vertical-align: middle; white-space: nowrap; }
+
+  thead th {
+    background: var(--col-header); color: white; font-weight: 600;
+    padding: 10px 8px; writing-mode: vertical-lr; text-orientation: mixed;
+    height: 110px; width: 68px; font-size: 0.88rem;
+    text-align: center; vertical-align: middle;
+  }
+  thead th:first-child {
+    writing-mode: horizontal-tb;
+    height: auto; width: 130px;
+    background: var(--col-header); color: white; font-size: 0.88rem;
+    white-space: normal; padding: 10px 12px;
+  }
+  thead th:last-child {
+    writing-mode: horizontal-tb;
+    height: auto; width: 190px;
+    background: var(--col-header); color: white; font-size: 0.85rem;
+    white-space: normal; padding: 10px 12px;
+  }
+
+  td.row-label {
+    background: var(--row-label-bg); font-weight: 700; width: 130px;
+    padding: 12px 10px; color: var(--ink); font-size: 0.92rem; text-align: center;
+  }
+  td.row-desc {
+    background: var(--row-desc-bg); padding: 10px 16px; text-align: left;
+    font-size: 0.88rem; color: var(--ink); font-weight: 500;
+    width: 190px; white-space: normal;
+  }
+  td.cell {
+    width: 68px; height: 54px; cursor: crosshair;
+    position: relative; transition: background 0.10s;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    color: var(--ink); user-select: none;
+  }
+  td.cell:hover { background: var(--cell-hover); }
+  tr:nth-child(even) td.cell { background: #faf9fd; }
+  tr:nth-child(even) td.cell:hover { background: var(--cell-hover); }
+
+  /* Pending cell highlight */
+  td.cell.used { color: var(--cell-text) !important; }
+  td.cell.pending {
+    background: #fff3cd !important;
+    outline: 2px dashed #e0a020;
+    outline-offset: -2px;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { outline-color: #e0a020; } to { outline-color: #c07000; } }
+
+  .instructions { font-size: 0.74rem; color: var(--ink-light); line-height: 1.7; }
+
+  /* ── Arrow list panel ── */
+  .arrow-list { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; max-height: 160px; overflow-y: auto; }
+  .arrow-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.76rem; padding: 4px 8px; border-radius: 6px;
+    background: #f7f5ff;
+  }
+  .arrow-item .arrow-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .arrow-item .arrow-label { flex: 1; color: var(--ink); }
+  .arrow-item .arrow-del { font-size: 0.68rem; opacity: 0.38; cursor: pointer; }
+  .arrow-item .arrow-del:hover { opacity: 1; color: #d64545; }
+  .no-arrows { font-size: 0.76rem; color: var(--ink-light); font-style: italic; padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="header-row">
+  <div class="header-left">
+    <h1>策略矩陣分析工具</h1>
+    <p class="subtitle">策略矩陣（Strategic Matrix）是由政大管理學大師司徒達賢教授提出的分析工具<br>主要用於將企業複雜的競爭策略轉化為直觀、結構化的視覺地圖</p>
+  </div>
+  <div class="theme-picker">
+    <div class="theme-picker-label">配色主題</div>
+    <div class="theme-swatches" id="themeSwatches"></div>
+  </div>
+</div>
+
+<!-- Strategy info -->
+<div class="panel">
+  <div class="panel-title">策略名稱與說明</div>
+  <div class="strategy-input-area">
+    <div class="strategy-title-row">
+      <label>策略名稱</label>
+      <input type="text" id="strategyTitle" placeholder="例：2026 全球布局策略" />
+    </div>
+    <div class="strategy-desc-row">
+      <textarea id="strategyDesc" placeholder="策略說明（可選填）：簡述此策略的核心邏輯、目標市場、主要競爭手段…"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Competitors -->
+<div class="panel">
+  <div class="panel-title">競爭者管理（點擊名稱可直接改名）</div>
+  <div class="competitor-row" id="competitorBar">
+    <div class="add-competitor">
+      <input type="text" id="compNameInput" placeholder="新增競爭者名稱" maxlength="14" />
+      <button class="btn-primary" onclick="addCompetitor()">＋ 新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Column editor -->
+<div class="panel">
+  <div class="panel-title">欄位管理（可編輯名稱、拖曳排序）</div>
+  <div class="col-editor" id="colEditor"></div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeDrawBtn" onclick="setMode('draw')">✏️ 繪製箭頭</button>
+    <button class="mode-btn" id="modeViewBtn" onclick="setMode('view')">👁 檢視模式</button>
+  </div>
+  <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ 復原</button>
+  <button class="btn-ghost" onclick="clearCompetitor()">清除目前競爭者</button>
+  <button class="btn-ghost" onclick="clearAll()">🗑 清除全部</button>
+  <button class="btn-export" onclick="exportImage()">📥 匯出 PNG</button>
+  <button class="btn-anim" onclick="exportAnimation()">🎬 匯出動畫序列</button>
+  <button class="btn-pptx" onclick="exportPptx()">📊 匯出 PPTX</button>
+  <span class="status" id="statusText"></span>
+</div>
+
+<!-- Legend -->
+<div class="panel" style="padding:10px 16px; margin-bottom:12px;">
+  <div class="legend" id="legendContainer"></div>
+</div>
+
+<!-- Arrow list -->
+<div class="panel" id="arrowListPanel">
+  <div class="panel-title">已繪製的箭頭（點 ✕ 可刪除）</div>
+  <div class="arrow-list" id="arrowList"></div>
+</div>
+
+<!-- Matrix -->
+<div class="matrix-wrapper">
+  <div class="matrix-container" id="matrixContainer">
+    <svg id="lineCanvas"></svg>
+    <table id="matrixTable"></table>
+  </div>
+</div>
+
+<p class="instructions">
+  ✏️ <b>繪製模式：</b>點第一格（起點，變黃色）→ 再點第二格（終點）→ 自動畫出帶箭頭的連線<br>
+  若想取消起點，再次點擊黃色格子即可
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+let COLUMNS = ['原料','零組件','採購','研發','製選','資訊系統','倉儲','運輸','通路','品牌','產品一','產品二','產品三'];
+
+const ROWS = [
+  { id: 'A', label: '產品線廣度與特色' },
+  { id: 'B', label: '目標市場區隔與選擇' },
+  { id: 'C', label: '垂直整合程度之取決' },
+  { id: 'D', label: '相對規模與規模經濟' },
+  { id: 'E', label: '地理涵蓋範圍' },
+  { id: 'F', label: '競爭優勢' },
+];
+
+const COLORS = ['#d64545','#3d7dd6','#2ca05a','#e07c1a','#8b4fcf','#0097a7','#c2185b','#4e342e'];
+
+let competitors = [
+  { name: '競爭者 A', color: COLORS[0] },
+  { name: '競爭者 B', color: COLORS[1] },
+];
+let activeIdx = 0;
+
+// arrows[compIdx] = [ {from: {row,col}, to: {row,col}}, ... ]
+let arrows = [[], []];
+
+let pendingCell = null; // { row, col, el }
+let currentMode = 'draw';
+
+// ── Undo ──────────────────────────────────────────────────────────────────
+let history = [];
+
+function pushHistory() {
+  history.push(JSON.stringify(arrows));
+  if (history.length > 80) history.shift();
+  document.getElementById('undoBtn').disabled = false;
+}
+
+function undo() {
+  if (!history.length) return;
+  arrows = JSON.parse(history.pop());
+  if (!history.length) document.getElementById('undoBtn').disabled = true;
+  cancelPending();
+  drawLines();
+  renderArrowList();
+  updateStatus();
+}
+
+// ── Mode ──────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeDrawBtn').classList.toggle('active', mode === 'draw');
+  document.getElementById('modeViewBtn').classList.toggle('active', mode === 'view');
+  cancelPending();
+  updateStatus();
+  // Update cursor
+  document.querySelectorAll('td.cell').forEach(td => {
+    td.style.cursor = mode === 'draw' ? 'crosshair' : 'default';
+  });
+}
+
+// ── Column Editor ─────────────────────────────────────────────────────────
+let dragSrcIdx = null;
+
+function renderColEditor() {
+  const editor = document.getElementById('colEditor');
+  editor.innerHTML = '';
+
+  COLUMNS.forEach((col, idx) => {
+    const tag = document.createElement('div');
+    tag.className = 'col-tag';
+    tag.draggable = true;
+
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.textContent = '⠿';
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = col;
+    inp.maxLength = 14;
+    inp.addEventListener('mousedown', e => e.stopPropagation());
+    inp.addEventListener('change', () => {
+      COLUMNS[idx] = inp.value.trim() || COLUMNS[idx];
+      rebuildTable();
+    });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+
+    const rm = document.createElement('span');
+    rm.className = 'col-remove';
+    rm.textContent = '✕';
+    rm.addEventListener('click', e => {
+      e.stopPropagation();
+      if (COLUMNS.length <= 2) { alert('至少保留 2 個欄位'); return; }
+      pushHistory();
+      arrows = arrows.map(arr => arr.filter(a => a.from.col !== idx && a.to.col !== idx)
+        .map(a => ({
+          from: { row: a.from.row, col: a.from.col > idx ? a.from.col - 1 : a.from.col },
+          to:   { row: a.to.row,   col: a.to.col   > idx ? a.to.col   - 1 : a.to.col   },
+        }))
+      );
+      COLUMNS.splice(idx, 1);
+      renderColEditor();
+      rebuildTable();
+    });
+
+    tag.appendChild(handle); tag.appendChild(inp); tag.appendChild(rm);
+
+    tag.addEventListener('dragstart', e => {
+      dragSrcIdx = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => tag.classList.add('dragging'), 0);
+    });
+    tag.addEventListener('dragend', () => {
+      tag.classList.remove('dragging');
+      document.querySelectorAll('.col-tag').forEach(t => t.classList.remove('drag-over'));
+    });
+    tag.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.col-tag').forEach(t => t.classList.remove('drag-over'));
+      tag.classList.add('drag-over');
+    });
+    tag.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      pushHistory();
+
+      const moved = COLUMNS.splice(dragSrcIdx, 1)[0];
+      COLUMNS.splice(idx, 0, moved);
+
+      // Remap arrow col indices
+      const reordered = Array.from({length: COLUMNS.length}, (_, i) => i);
+      const [rm2] = reordered.splice(dragSrcIdx, 1);
+      reordered.splice(idx, 0, rm2);
+      const oldToNew = {};
+      reordered.forEach((old, nw) => { oldToNew[old] = nw; });
+
+      arrows = arrows.map(arr => arr.map(a => ({
+        from: { row: a.from.row, col: oldToNew[a.from.col] ?? a.from.col },
+        to:   { row: a.to.row,   col: oldToNew[a.to.col]   ?? a.to.col },
+      })));
+
+      dragSrcIdx = null;
+      renderColEditor();
+      rebuildTable();
+    });
+
+    editor.appendChild(tag);
+  });
+
+  // Inline add column
+  const addInline = document.createElement('div');
+  addInline.className = 'add-col-inline';
+  const addInp = document.createElement('input');
+  addInp.type = 'text';
+  addInp.placeholder = '新欄位名稱';
+  addInp.maxLength = 14;
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'confirm-add';
+  confirmBtn.textContent = '新增';
+  confirmBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const name = addInp.value.trim();
+    if (!name) { addInp.focus(); return; }
+    COLUMNS.push(name);
+    arrows = arrows.map(arr => arr); // keep existing arrows intact
+    renderColEditor();
+    rebuildTable();
+  });
+  addInp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn.click(); });
+  addInline.appendChild(addInp);
+  addInline.appendChild(confirmBtn);
+  editor.appendChild(addInline);
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+function rebuildTable() {
+  buildTable();
+  drawLines();
+  renderArrowList();
+}
+
+function buildTable() {
+  const table = document.getElementById('matrixTable');
+  table.innerHTML = '';
+
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.textContent = '策略維度 / 活動';
+  hr.appendChild(corner);
+
+  COLUMNS.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    th.style.writingMode = 'vertical-lr';
+    th.style.textOrientation = 'mixed';
+    th.style.height = '110px';
+    th.style.width = '68px';
+    th.style.background = getComputedStyle(document.documentElement).getPropertyValue('--col-header').trim();
+    th.style.color = 'white';
+    hr.appendChild(th);
+  });
+
+  const last = document.createElement('th');
+  last.textContent = '策略維度說明';
+  hr.appendChild(last);
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  ROWS.forEach(row => {
+    const tr = document.createElement('tr');
+    const tdL = document.createElement('td');
+    tdL.className = 'row-label';
+    tdL.textContent = row.id;
+    tr.appendChild(tdL);
+
+    COLUMNS.forEach((_, ci) => {
+      const td = document.createElement('td');
+      td.className = 'cell';
+      td.id = `cell-${row.id}-${ci}`;
+      td.dataset.row = row.id;
+      td.dataset.col = ci;
+      td.style.cursor = currentMode === 'draw' ? 'crosshair' : 'default';
+
+      const code = document.createElement('span');
+      code.textContent = `${row.id}${String(ci+1).padStart(2,'0')}`;
+      code.style.opacity = '0.28';
+      td.appendChild(code);
+
+      td.addEventListener('click', () => onCellClick(row.id, ci, td));
+      tr.appendChild(td);
+    });
+
+    const tdD = document.createElement('td');
+    tdD.className = 'row-desc';
+    tdD.textContent = row.label;
+    tr.appendChild(tdD);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+// ── Cell Click — free arrow drawing ───────────────────────────────────────
+function onCellClick(rowId, colIdx, td) {
+  if (currentMode !== 'draw') return;
+
+  if (!pendingCell) {
+    // First click — set pending
+    pendingCell = { row: rowId, col: colIdx, el: td };
+    td.classList.add('pending');
+    updateStatus();
+  } else {
+    // Toggle off if same cell
+    if (pendingCell.row === rowId && pendingCell.col === colIdx) {
+      cancelPending();
+      return;
+    }
+    // Second click — draw arrow
+    pushHistory();
+    arrows[activeIdx].push({
+      from: { row: pendingCell.row, col: pendingCell.col },
+      to:   { row: rowId, col: colIdx },
+    });
+    cancelPending();
+    drawLines();
+    renderArrowList();
+    updateStatus();
+  }
+}
+
+function cancelPending() {
+  if (pendingCell) {
+    pendingCell.el.classList.remove('pending');
+    pendingCell = null;
+  }
+  updateStatus();
+}
+
+// ── Draw Lines + Arrows ───────────────────────────────────────────────────
+function getCellCenter(rowId, colIdx) {
+  const td = document.getElementById(`cell-${rowId}-${colIdx}`);
+  if (!td) return null;
+  const container = document.getElementById('matrixContainer');
+  const cr = container.getBoundingClientRect();
+  const r = td.getBoundingClientRect();
+  return { x: r.left - cr.left + r.width/2, y: r.top - cr.top + r.height/2 };
+}
+
+function drawLines() {
+  const svg = document.getElementById('lineCanvas');
+  svg.innerHTML = '';
+  // Clear used class from all cells
+  document.querySelectorAll('td.cell.used').forEach(td => td.classList.remove('used'));
+
+  // Defs: arrow markers per competitor
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  competitors.forEach((comp, ci) => {
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', `arrow-${ci}`);
+    marker.setAttribute('markerWidth', '9');
+    marker.setAttribute('markerHeight', '9');
+    marker.setAttribute('refX', '7');
+    marker.setAttribute('refY', '3.5');
+    marker.setAttribute('orient', 'auto');
+    const ap = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    ap.setAttribute('d', 'M0,0 L0,7 L9,3.5 z');
+    ap.setAttribute('fill', comp.color);
+    ap.setAttribute('opacity', '0.90');
+    marker.appendChild(ap);
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  arrows.forEach((compArrows, ci) => {
+    const comp = competitors[ci];
+    compArrows.forEach(arrow => {
+      const p1 = getCellCenter(arrow.from.row, arrow.from.col);
+      const p2 = getCellCenter(arrow.to.row, arrow.to.col);
+      if (!p1 || !p2) return;
+
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+      const shrink = 12;
+      const ex = p2.x - dx/len*shrink;
+      const ey = p2.y - dy/len*shrink;
+      const mx = (p1.x + ex) / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${p1.x} ${p1.y} C ${mx} ${p1.y}, ${mx} ${ey}, ${ex} ${ey}`);
+      path.setAttribute('stroke', comp.color);
+      path.setAttribute('stroke-width', '3');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('opacity', '0.88');
+      path.setAttribute('marker-end', `url(#arrow-${ci})`);
+      svg.appendChild(path);
+
+      // Dots at both ends
+      [p1, p2].forEach(pt => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', pt.x);
+        c.setAttribute('cy', pt.y);
+        c.setAttribute('r', '6');
+        c.setAttribute('fill', comp.color);
+        c.setAttribute('stroke', 'white');
+        c.setAttribute('stroke-width', '2');
+        svg.appendChild(c);
+      });
+
+      // Mark cells as used (light text)
+      const fromTd = document.getElementById(`cell-${arrow.from.row}-${arrow.from.col}`);
+      const toTd   = document.getElementById(`cell-${arrow.to.row}-${arrow.to.col}`);
+      if (fromTd) fromTd.classList.add('used');
+      if (toTd)   toTd.classList.add('used');
+    });
+  });
+}
+
+// ── Arrow list ────────────────────────────────────────────────────────────
+function renderArrowList() {
+  const list = document.getElementById('arrowList');
+  list.innerHTML = '';
+  let total = 0;
+
+  arrows.forEach((compArrows, ci) => {
+    const comp = competitors[ci];
+    compArrows.forEach((arrow, ai) => {
+      total++;
+      const item = document.createElement('div');
+      item.className = 'arrow-item';
+
+      const colorDot = document.createElement('div');
+      colorDot.className = 'arrow-color';
+      colorDot.style.background = comp.color;
+
+      const label = document.createElement('span');
+      label.className = 'arrow-label';
+      const fromLabel = `${arrow.from.row}${String(arrow.from.col+1).padStart(2,'0')}`;
+      const toLabel   = `${arrow.to.row}${String(arrow.to.col+1).padStart(2,'0')}`;
+      label.textContent = `${comp.name}：${fromLabel} → ${toLabel}`;
+
+      const del = document.createElement('span');
+      del.className = 'arrow-del';
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        pushHistory();
+        arrows[ci].splice(ai, 1);
+        drawLines();
+        renderArrowList();
+        updateStatus();
+      });
+
+      item.appendChild(colorDot);
+      item.appendChild(label);
+      item.appendChild(del);
+      list.appendChild(item);
+    });
+  });
+
+  if (total === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'no-arrows';
+    empty.textContent = '尚未繪製任何箭頭';
+    list.appendChild(empty);
+  }
+}
+
+// ── Competitor UI ─────────────────────────────────────────────────────────
+function renderCompetitorBar() {
+  const bar = document.getElementById('competitorBar');
+  bar.querySelectorAll('.competitor-chip').forEach(c => c.remove());
+  const addDiv = bar.querySelector('.add-competitor');
+
+  competitors.forEach((comp, ci) => {
+    const chip = document.createElement('div');
+    chip.className = 'competitor-chip' + (ci === activeIdx ? ' active' : '');
+    chip.style.color = comp.color;
+
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+
+    const nameInp = document.createElement('input');
+    nameInp.className = 'chip-name';
+    nameInp.type = 'text';
+    nameInp.value = comp.name;
+    nameInp.maxLength = 14;
+    nameInp.title = '點擊改名';
+    nameInp.addEventListener('mousedown', e => e.stopPropagation());
+    nameInp.addEventListener('change', () => {
+      comp.name = nameInp.value.trim() || comp.name;
+      nameInp.value = comp.name;
+      renderLegend();
+      renderArrowList();
+      updateStatus();
+    });
+    nameInp.addEventListener('keydown', e => { if (e.key === 'Enter') nameInp.blur(); });
+
+    const rm = document.createElement('span');
+    rm.className = 'remove';
+    rm.textContent = '✕';
+    rm.addEventListener('click', e => { e.stopPropagation(); removeCompetitor(ci); });
+
+    chip.appendChild(dot); chip.appendChild(nameInp); chip.appendChild(rm);
+    chip.addEventListener('click', e => {
+      if (e.target === nameInp || e.target === rm) return;
+      activeIdx = ci;
+      cancelPending();
+      renderCompetitorBar();
+      updateStatus();
+    });
+    bar.insertBefore(chip, addDiv);
+  });
+
+  renderLegend();
+}
+
+function renderLegend() {
+  const legend = document.getElementById('legendContainer');
+  legend.innerHTML = '';
+  competitors.forEach(comp => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-line" style="background:${comp.color}"></div><span>${comp.name}</span>`;
+    legend.appendChild(item);
+  });
+}
+
+function addCompetitor() {
+  const inp = document.getElementById('compNameInput');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (competitors.length >= 8) { alert('最多支援 8 個競爭者'); return; }
+  competitors.push({ name, color: COLORS[competitors.length % COLORS.length] });
+  arrows.push([]);
+  activeIdx = competitors.length - 1;
+  inp.value = '';
+  renderCompetitorBar();
+  updateStatus();
+}
+
+function removeCompetitor(ci) {
+  if (competitors.length <= 1) { alert('至少保留一個競爭者'); return; }
+  pushHistory();
+  competitors.splice(ci, 1);
+  arrows.splice(ci, 1);
+  if (activeIdx >= competitors.length) activeIdx = competitors.length - 1;
+  cancelPending();
+  renderCompetitorBar();
+  drawLines();
+  renderArrowList();
+  updateStatus();
+}
+
+function clearAll() {
+  if (!confirm('確定要清除所有箭頭？')) return;
+  pushHistory();
+  arrows = competitors.map(() => []);
+  cancelPending();
+  drawLines();
+  renderArrowList();
+  updateStatus();
+}
+
+function clearCompetitor() {
+  pushHistory();
+  arrows[activeIdx] = [];
+  cancelPending();
+  drawLines();
+  renderArrowList();
+  updateStatus();
+}
+
+function updateStatus() {
+  const comp = competitors[activeIdx];
+  const count = arrows[activeIdx].length;
+  let hint = '';
+  if (currentMode === 'draw') {
+    hint = pendingCell
+      ? `選起點：${pendingCell.row}${String(pendingCell.col+1).padStart(2,'0')} — 請點終點`
+      : `✏️ 點第一格設起點`;
+  } else {
+    hint = '👁 檢視模式';
+  }
+  document.getElementById('statusText').textContent =
+    `${comp.name}｜${count} 條箭頭｜${hint}`;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+async function exportImage() {
+  const title = document.getElementById('strategyTitle').value.trim();
+  const desc  = document.getElementById('strategyDesc').value.trim();
+  const SCALE = 2;
+  const PAD   = 32;
+
+  // ── Step 1: scroll to top so matrixContainer is fully in viewport ─────
+  window.scrollTo(0, 0);
+  await new Promise(r => setTimeout(r, 60));
+
+  // ── Step 1b: Convert vertical-lr th to horizontal with <br> for html2canvas ──
+  // html2canvas does not support writing-mode, so we fake vertical text
+  const matrixWrapper = document.querySelector('.matrix-wrapper');
+  const allThs = matrixWrapper.querySelectorAll('thead th');
+  const thBackups = [];
+  allThs.forEach((th, i) => {
+    // skip first and last (horizontal)
+    if (i === 0 || i === allThs.length - 1) return;
+    const original = th.innerHTML;
+    const originalStyle = th.getAttribute('style') || '';
+    thBackups.push({ th, original, originalStyle });
+    // Break text into individual chars with <br> to simulate vertical
+    const text = th.textContent.trim();
+    th.innerHTML = text.split('').join('<br>');
+    th.style.writingMode = 'horizontal-tb';
+    th.style.lineHeight = '1.3';
+    th.style.fontSize = '13px';
+    th.style.width = '68px';
+    th.style.height = '110px';
+    th.style.padding = '8px 4px';
+    th.style.verticalAlign = 'middle';
+  });
+
+  await new Promise(r => setTimeout(r, 30));
+
+  // ── Step 2: screenshot the LIVE matrixWrapper (table + SVG arrows) ────
+  const matrixCanvas  = await html2canvas(matrixWrapper, {
+    scale: SCALE,
+    backgroundColor: '#ffffff',
+    useCORS: true,
+    logging: false,
+  });
+
+  // Restore original th content
+  thBackups.forEach(({ th, original, originalStyle }) => {
+    th.innerHTML = original;
+    th.setAttribute('style', originalStyle);
+  });
+
+  // ── Step 3: build header canvas with Canvas 2D API ───────────────────
+  // Measure header height needed
+  const FONT_TITLE  = `bold ${14 * SCALE}px "Noto Sans TC", sans-serif`;
+  const FONT_DESC   = `${10 * SCALE}px "Noto Sans TC", sans-serif`;
+  const FONT_LEGEND = `${10 * SCALE}px "Noto Sans TC", sans-serif`;
+
+  const tmp = document.createElement('canvas').getContext('2d');
+  let hdrH = PAD * SCALE;
+  if (title) hdrH += 18 * SCALE + 6 * SCALE;
+  if (desc) {
+    // wrap desc into lines at matrixCanvas.width - 2*PAD*SCALE
+    tmp.font = FONT_DESC;
+    const maxW = matrixCanvas.width - 2 * PAD * SCALE;
+    const words = desc.split('');
+    let line = '', lines = [];
+    for (const ch of words) {
+      const test = line + ch;
+      if (tmp.measureText(test).width > maxW && line.length) {
+        lines.push(line); line = ch;
+      } else { line = test; }
+    }
+    if (line) lines.push(line);
+    hdrH += lines.length * 18 * SCALE + 10 * SCALE;
+  }
+  if (competitors.length) hdrH += 20 * SCALE + 10 * SCALE;
+  hdrH += 8 * SCALE; // bottom gap
+
+  const totalW = matrixCanvas.width + PAD * SCALE * 2;
+  const totalH = hdrH + matrixCanvas.height;
+
+  // Create final canvas
+  const out = document.createElement('canvas');
+  const targetH16_9 = Math.round(totalW * 9 / 16);
+  out.width  = totalW;
+  out.height = Math.max(totalH, targetH16_9);
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, out.width, out.height);
+
+  let y = PAD * SCALE;
+
+  // Title
+  if (title) {
+    ctx.font = FONT_TITLE;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillText(title, PAD * SCALE, y + 22 * SCALE);
+    y += 28 * SCALE + 10 * SCALE;
+  }
+
+  // Desc (wrapped)
+  if (desc) {
+    ctx.font = FONT_DESC;
+    ctx.fillStyle = '#6b6b8a';
+    const maxW = matrixCanvas.width;
+    const words2 = desc.split('');
+    let line2 = '', lines2 = [];
+    for (const ch of words2) {
+      const test = line2 + ch;
+      if (ctx.measureText(test).width > maxW && line2.length) {
+        lines2.push(line2); line2 = ch;
+      } else { line2 = test; }
+    }
+    if (line2) lines2.push(line2);
+    lines2.forEach(l => {
+      ctx.fillText(l, PAD * SCALE, y + 14 * SCALE);
+      y += 14 * SCALE;
+    });
+    y += 10 * SCALE;
+  }
+
+  // Legend
+  if (competitors.length) {
+    let lx = PAD * SCALE;
+    competitors.forEach(comp => {
+      ctx.fillStyle = comp.color;
+      ctx.fillRect(lx, y + 6 * SCALE, 20 * SCALE, 3 * SCALE);
+      lx += 26 * SCALE;
+      ctx.font = FONT_LEGEND;
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillText(comp.name, lx, y + 13 * SCALE);
+      lx += ctx.measureText(comp.name).width + 18 * SCALE;
+    });
+    y += 16 * SCALE + 10 * SCALE;
+  }
+
+  y += 8 * SCALE;
+
+  // Draw matrix (x centered with PAD)
+  ctx.drawImage(matrixCanvas, PAD * SCALE, y);
+
+  // Vertical centering if 16:9 is taller than content
+  if (totalH < targetH16_9) {
+    // Redraw vertically centered
+    const offsetY = Math.round((targetH16_9 - totalH) / 2);
+    const centered = document.createElement('canvas');
+    centered.width  = out.width;
+    centered.height = targetH16_9;
+    const cctx = centered.getContext('2d');
+    cctx.fillStyle = '#ffffff';
+    cctx.fillRect(0, 0, centered.width, centered.height);
+    cctx.drawImage(out, 0, offsetY);
+    const link2 = document.createElement('a');
+    link2.download = (title || '策略矩陣分析') + '.png';
+    link2.href = centered.toDataURL('image/png');
+    link2.click();
+    return;
+  }
+
+  const link = document.createElement('a');
+  link.download = (title || '策略矩陣分析') + '.png';
+  link.href = out.toDataURL('image/png');
+  link.click();
+}
+
+
+// ── Hex color to light pastel version ────────────────────────────────────
+function colorToLight(hex) {
+  // Parse hex, blend toward white at 70%
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  const blend = 0.72; // how much white to mix in
+  const lr = Math.round(r + (255 - r) * blend);
+  const lg = Math.round(g + (255 - g) * blend);
+  const lb = Math.round(b + (255 - b) * blend);
+  return `rgb(${lr},${lg},${lb})`;
+}
+
+// ── Draw lines for animation frame ───────────────────────────────────────
+// allSteps: array of arrows for the active competitor only
+// activeStep: index of the "current" (full color) arrow; previous ones are light
+function drawLinesForFrame(allSteps, activeStep) {
+  const svg = document.getElementById('lineCanvas');
+  svg.innerHTML = '';
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const defs  = document.createElementNS(svgNS, 'defs');
+
+  // Two markers per competitor: full color and light
+  competitors.forEach((comp, ci) => {
+    ['full', 'light'].forEach(type => {
+      const marker = document.createElementNS(svgNS, 'marker');
+      marker.setAttribute('id', `anim-arrow-${ci}-${type}`);
+      marker.setAttribute('markerWidth', '9');
+      marker.setAttribute('markerHeight', '9');
+      marker.setAttribute('refX', '7');
+      marker.setAttribute('refY', '3.5');
+      marker.setAttribute('orient', 'auto');
+      const ap = document.createElementNS(svgNS, 'path');
+      ap.setAttribute('d', 'M0,0 L0,7 L9,3.5 z');
+      ap.setAttribute('fill', type === 'full' ? comp.color : colorToLight(comp.color));
+      marker.appendChild(ap);
+      defs.appendChild(marker);
+    });
+  });
+  svg.appendChild(defs);
+
+  allSteps.forEach((step, idx) => {
+    if (idx > activeStep) return;
+    const isActive = idx === activeStep;
+    const color     = isActive ? competitors[step.ci].color : colorToLight(competitors[step.ci].color);
+    const markerType = isActive ? 'full' : 'light';
+
+    const p1 = getCellCenter(step.arrow.from.row, step.arrow.from.col);
+    const p2 = getCellCenter(step.arrow.to.row,   step.arrow.to.col);
+    if (!p1 || !p2) return;
+
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+    const ex = p2.x - dx/len*12, ey = p2.y - dy/len*12;
+    const mx = (p1.x + ex) / 2;
+
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', `M ${p1.x} ${p1.y} C ${mx} ${p1.y}, ${mx} ${ey}, ${ex} ${ey}`);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '3');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('opacity', '0.88');
+    path.setAttribute('marker-end', `url(#anim-arrow-${step.ci}-${markerType})`);
+    svg.appendChild(path);
+
+    [p1, p2].forEach(pt => {
+      const c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y);
+      c.setAttribute('r', '6'); c.setAttribute('fill', color);
+      c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '2');
+      svg.appendChild(c);
+    });
+  });
+}
+
+// ── Animation export (single competitor only) ─────────────────────────────
+async function exportAnimation() {
+  // Only use the currently active competitor
+  const ci = activeIdx;
+  const compArrows = arrows[ci];
+
+  if (!compArrows || compArrows.length === 0) {
+    alert(`「${competitors[ci].name}」尚未繪製任何箭頭。
+動畫序列只支援單一競爭者，請先切換到要匯出的競爭者並繪製箭頭。`);
+    return;
+  }
+
+  const allSteps = compArrows.map(arrow => ({ ci, arrow }));
+
+  const title = document.getElementById('strategyTitle').value.trim();
+  const SCALE = 2;
+
+  // Show progress overlay
+  const overlay = document.getElementById('exportProgress');
+  const fill    = document.getElementById('progressFill');
+  const label   = document.getElementById('progressLabel');
+  overlay.classList.add('active');
+
+  const capturedCanvases = [];
+
+  for (let step = 0; step < allSteps.length; step++) {
+    label.textContent = `第 ${step + 1} / ${allSteps.length} 張`;
+    fill.style.width  = `${Math.round((step / allSteps.length) * 100)}%`;
+
+    // Draw the frame
+    drawLinesForFrame(allSteps, step);
+    await new Promise(r => setTimeout(r, 40)); // let DOM update
+
+    // Screenshot (same approach as exportImage)
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 30));
+
+    // Convert vertical th for html2canvas
+    const matrixWrapper = document.querySelector('.matrix-wrapper');
+    const allThs = matrixWrapper.querySelectorAll('thead th');
+    const thBackups = [];
+    allThs.forEach((th, i) => {
+      if (i === 0 || i === allThs.length - 1) return;
+      const original = th.innerHTML;
+      const originalStyle = th.getAttribute('style') || '';
+      thBackups.push({ th, original, originalStyle });
+      const text = th.textContent.trim();
+      th.innerHTML = text.split('').join('<br>');
+      th.style.writingMode = 'horizontal-tb';
+      th.style.lineHeight = '1.3';
+      th.style.fontSize = '13px';
+      th.style.width = '68px';
+      th.style.height = '110px';
+      th.style.padding = '8px 4px';
+      th.style.verticalAlign = 'middle';
+    });
+    await new Promise(r => setTimeout(r, 20));
+
+    const matrixCanvas = await html2canvas(matrixWrapper, {
+      scale: SCALE, backgroundColor: '#ffffff', useCORS: true, logging: false,
+    });
+
+    thBackups.forEach(({ th, original, originalStyle }) => {
+      th.innerHTML = original;
+      th.setAttribute('style', originalStyle);
+    });
+
+    // Build full frame with header
+    const desc = document.getElementById('strategyDesc').value.trim();
+    const PAD  = 32;
+    const FONT_TITLE  = `bold ${14*SCALE}px "Noto Sans TC",sans-serif`;
+    const FONT_LEGEND = `${10*SCALE}px "Noto Sans TC",sans-serif`;
+
+    let hdrH = PAD * SCALE;
+    if (title) hdrH += 18 * SCALE + 6 * SCALE;
+    if (desc)  hdrH += 14 * SCALE + 10 * SCALE;
+    hdrH += 16 * SCALE + 10 * SCALE; // legend
+    hdrH += 8 * SCALE;
+
+    const totalW    = matrixCanvas.width + PAD * SCALE * 2;
+    const targetH   = Math.round(totalW * 9 / 16);
+    const totalH    = Math.max(hdrH + matrixCanvas.height, targetH);
+
+    const out = document.createElement('canvas');
+    out.width = totalW; out.height = totalH;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    let y = PAD * SCALE;
+    if (title) {
+      ctx.font = FONT_TITLE; ctx.fillStyle = '#1a1a2e';
+      ctx.fillText(title, PAD * SCALE, y + 14 * SCALE);
+      y += 18 * SCALE + 6 * SCALE;
+    }
+    if (desc) {
+      ctx.font = `${10*SCALE}px "Noto Sans TC",sans-serif`; ctx.fillStyle = '#6b6b8a';
+      ctx.fillText(desc, PAD * SCALE, y + 11 * SCALE);
+      y += 14 * SCALE + 10 * SCALE;
+    }
+    // Legend
+    let lx = PAD * SCALE;
+    competitors.forEach(comp => {
+      ctx.fillStyle = comp.color;
+      ctx.fillRect(lx, y + 8 * SCALE, 26 * SCALE, 4 * SCALE);
+      lx += 32 * SCALE;
+      ctx.font = FONT_LEGEND; ctx.fillStyle = '#1a1a2e';
+      ctx.fillText(comp.name, lx, y + 16 * SCALE);
+      lx += ctx.measureText(comp.name).width + 22 * SCALE;
+    });
+    y += 20 * SCALE + 10 * SCALE + 8 * SCALE;
+
+    // Center vertically
+    const contentH = hdrH + matrixCanvas.height;
+    const offsetY = Math.max(0, Math.round((targetH - contentH) / 2));
+    ctx.drawImage(matrixCanvas, PAD * SCALE, y + offsetY - (hdrH - PAD*SCALE) + hdrH - PAD*SCALE);
+
+    capturedCanvases.push({ canvas: out, step: step + 1 });
+  }
+
+  // Restore normal drawing
+  drawLines();
+
+  // Download all frames
+  fill.style.width = '100%';
+  label.textContent = '下載中...';
+  await new Promise(r => setTimeout(r, 100));
+
+  for (const { canvas, step } of capturedCanvases) {
+    const link = document.createElement('a');
+    const pad  = String(step).padStart(2, '0');
+    link.download = `${title || '策略矩陣'}_step${pad}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    await new Promise(r => setTimeout(r, 150)); // stagger downloads
+  }
+
+  overlay.classList.remove('active');
+}
+
+// ── Helper: capture matrix frame as base64 PNG ───────────────────────────
+async function captureFrameBase64() {
+  window.scrollTo(0, 0);
+  await new Promise(r => setTimeout(r, 30));
+
+  const matrixWrapper = document.querySelector('.matrix-wrapper');
+  const allThs = matrixWrapper.querySelectorAll('thead th');
+  const thBackups = [];
+  allThs.forEach((th, i) => {
+    if (i === 0 || i === allThs.length - 1) return;
+    const original = th.innerHTML;
+    const originalStyle = th.getAttribute('style') || '';
+    thBackups.push({ th, original, originalStyle });
+    const text = th.textContent.trim();
+    th.innerHTML = text.split('').join('<br>');
+    th.style.writingMode = 'horizontal-tb';
+    th.style.lineHeight = '1.3';
+    th.style.fontSize = '13px';
+    th.style.width = '68px';
+    th.style.height = '110px';
+    th.style.padding = '8px 4px';
+    th.style.verticalAlign = 'middle';
+  });
+  await new Promise(r => setTimeout(r, 20));
+
+  const matrixCanvas = await html2canvas(matrixWrapper, {
+    scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+  });
+
+  thBackups.forEach(({ th, original, originalStyle }) => {
+    th.innerHTML = original;
+    th.setAttribute('style', originalStyle);
+  });
+
+  return matrixCanvas.toDataURL('image/png'); // full data URL
+}
+
+// ── Export PPTX (self-contained, no external lib) ────────────────────────
+// Builds a valid PPTX (Office Open XML ZIP) from scratch using JSZip
+async function exportPptx() {
+  const ci = activeIdx;
+  const compArrows = arrows[ci];
+
+  if (!compArrows || compArrows.length === 0) {
+    alert(`「${competitors[ci].name}」尚未繪製任何箭頭。\n請先繪製箭頭後再匯出 PPTX。`);
+    return;
+  }
+
+  const titleText = document.getElementById('strategyTitle').value.trim();
+  const allSteps  = compArrows.map(arrow => ({ ci, arrow }));
+
+  const overlay = document.getElementById('exportProgress');
+  const fill    = document.getElementById('progressFill');
+  const label   = document.getElementById('progressLabel');
+  overlay.classList.add('active');
+  fill.style.width = '0%';
+
+  // ── 1. Capture frames ──────────────────────────────────────────────────
+  const frames = []; // { dataUrl, base64 }
+  for (let step = 0; step < allSteps.length; step++) {
+    label.textContent = `截圖第 ${step + 1} / ${allSteps.length} 張...`;
+    fill.style.width  = `${Math.round((step / allSteps.length) * 75)}%`;
+
+    drawLinesForFrame(allSteps, step);
+    await new Promise(r => setTimeout(r, 40));
+
+    const dataUrl = await captureFrameBase64();
+    // Strip the data:image/png;base64, prefix
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+    frames.push({ dataUrl, base64 });
+  }
+  drawLines();
+
+  // ── 2. Build PPTX ZIP ─────────────────────────────────────────────────
+  label.textContent = '正在組合 PPTX...';
+  fill.style.width  = '80%';
+  await new Promise(r => setTimeout(r, 30));
+
+  const zip = new JSZip();
+  const N   = frames.length;
+
+  // EMU helpers (1 inch = 914400 EMU, slide = 9144000 x 5143500)
+  const W = 9144000, H = 5143500; // 10" x 5.625"
+  const in2emu = v => Math.round(v * 914400);
+
+  // ── [Content_Types].xml ───────────────────────────────────────────────
+  let slideRels = '';
+  for (let i = 1; i <= N; i++) {
+    slideRels += `<Override PartName="/ppt/slides/slide${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`;
+    slideRels += `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`;
+  }
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Default Extension="png"  ContentType="image/png"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+  ${Array.from({length:N},(_,i)=>`<Override PartName="/ppt/slides/slide${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')}
+  ${Array.from({length:N},(_,i)=>`<Override PartName="/ppt/media/img${i+1}.png" ContentType="image/png"/>`).join('')}
+</Types>`);
+
+  // ── _rels/.rels ────────────────────────────────────────────────────────
+  zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`);
+
+  // ── ppt/presentation.xml ──────────────────────────────────────────────
+  const sldIdLst = Array.from({length:N},(_,i)=>
+    `<p:sldId id="${256+i}" r:id="rId${i+1}"/>`).join('');
+  zip.folder('ppt').file('presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" saveSubsetFonts="1">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rIdM1"/></p:sldMasterIdLst>
+  <p:sldIdLst>${sldIdLst}</p:sldIdLst>
+  <p:sldSz cx="${W}" cy="${H}" type="screen16x9"/>
+  <p:notesSz cx="${H}" cy="${W}"/>
+</p:presentation>`);
+
+  // ── ppt/_rels/presentation.xml.rels ──────────────────────────────────
+  const presRels = Array.from({length:N},(_,i)=>
+    `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i+1}.xml"/>`).join('');
+  zip.folder('ppt/_rels').file('presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${presRels}
+  <Relationship Id="rIdM1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+</Relationships>`);
+
+  // ── Minimal theme ─────────────────────────────────────────────────────
+  zip.folder('ppt/theme').file('theme1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+  <a:themeElements>
+    <a:clrScheme name="Office"><a:dk1><a:sysClr lastClr="000000" val="windowText"/></a:dk1><a:lt1><a:sysClr lastClr="FFFFFF" val="window"/></a:lt1><a:dk2><a:srgbClr val="1F3864"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2><a:accent3><a:srgbClr val="A9D18E"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4><a:accent5><a:srgbClr val="5A96C8"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+    <a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
+    <a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme>
+  </a:themeElements>
+</a:theme>`);
+
+  // ── Minimal slideMaster + slideLayout ─────────────────────────────────
+  zip.folder('ppt/slideMasters').file('slideMaster1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+  <p:txStyles><p:titleStyle><a:lstStyle/></p:titleStyle><p:bodyStyle><a:lstStyle/></p:bodyStyle><p:otherStyle><a:lstStyle/></p:otherStyle></p:txStyles>
+</p:sldMaster>`);
+
+  zip.folder('ppt/slideMasters/_rels').file('slideMaster1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`);
+
+  zip.folder('ppt/slideLayouts').file('slideLayout1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" type="blank" preserve="1">
+  <p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sldLayout>`);
+
+  zip.folder('ppt/slideLayouts/_rels').file('slideLayout1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`);
+
+  // ── Per-slide XML + images ─────────────────────────────────────────────
+  const PAD_EMU = in2emu(0.18);
+  const titleH  = in2emu(0.65); // top title bar height
+  const descH   = in2emu(0.85); // bottom desc bar height
+  const stepH   = in2emu(0.28); // step label height
+
+  // Get actual image dimensions to maintain aspect ratio
+  const firstImg = new Image();
+  await new Promise(res => { firstImg.onload = res; firstImg.src = frames[0].dataUrl; });
+  const srcRatio = firstImg.naturalWidth / firstImg.naturalHeight;
+
+  // Available area between title bar and desc bar
+  const areaX = PAD_EMU;
+  const areaY = titleH + PAD_EMU;
+  const areaW = W - PAD_EMU * 2;
+  const areaH = H - titleH - descH - PAD_EMU * 2;
+  const areaRatio = areaW / areaH;
+
+  let imgW, imgH;
+  if (srcRatio > areaRatio) {
+    imgW = areaW;
+    imgH = Math.round(areaW / srcRatio);
+  } else {
+    imgH = areaH;
+    imgW = Math.round(areaH * srcRatio);
+  }
+  const imgX = areaX + Math.round((areaW - imgW) / 2);
+  const imgY = areaY + Math.round((areaH - imgH) / 2);
+
+  for (let i = 0; i < N; i++) {
+    label.textContent = `組合投影片 ${i + 1} / ${N}...`;
+    fill.style.width  = `${Math.round(80 + (i / N) * 15)}%`;
+    await new Promise(r => setTimeout(r, 10));
+
+    const step = i + 1;
+    const imgId = i + 1;
+
+    // Embed image
+    zip.folder('ppt/media').file(`img${imgId}.png`, frames[i].base64, { base64: true });
+
+    // ── Title bar (top, full width, purple background) ──────────────────
+    const titleXml = `
+    <p:sp>
+      <p:nvSpPr><p:cNvPr id="2" name="titleBg"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+      <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="${titleH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="${getComputedStyle(document.documentElement).getPropertyValue('--col-header').trim().replace('#','')}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>
+      <p:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="zh-TW" sz="3200" b="1" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>${escXml(titleText)}</a:t></a:r></a:p></p:txBody>
+    </p:sp>`;
+
+    // ── Desc bar (bottom, full width, soft blue background) ─────────────
+    const descText = document.getElementById('strategyDesc').value.trim();
+    const descXml = `
+    <p:sp>
+      <p:nvSpPr><p:cNvPr id="3" name="descBg"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+      <p:spPr><a:xfrm><a:off x="${in2emu(0.3)}" y="${H - descH}"/><a:ext cx="${W - in2emu(0.6)}" cy="${descH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>
+      <p:txBody>
+        <a:bodyPr anchor="t" wrap="square" lIns="0" rIns="0" tIns="${in2emu(0.1)}" bIns="0">
+          <a:normAutofit/>
+        </a:bodyPr>
+        <a:lstStyle/>
+        <a:p><a:pPr algn="l"/><a:r><a:rPr lang="zh-TW" sz="1400" dirty="0"><a:solidFill><a:srgbClr val="3d5a6a"/></a:solidFill></a:rPr><a:t>${escXml(descText)}</a:t></a:r></a:p>
+      </p:txBody>
+    </p:sp>`;
+
+    // ── Step label (top right, over title bar) ───────────────────────────
+    const stepXml = `
+    <p:sp>
+      <p:nvSpPr><p:cNvPr id="4" name="step"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+      <p:spPr><a:xfrm><a:off x="${W - in2emu(1.1)}" y="${in2emu(0.05)}"/><a:ext cx="${in2emu(0.9)}" cy="${titleH - in2emu(0.08)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
+      <p:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="zh-TW" sz="800" dirty="0"><a:solidFill><a:srgbClr val="ffffffcc"/></a:solidFill></a:rPr><a:t>Step ${step} / ${N}</a:t></a:r></a:p></p:txBody>
+    </p:sp>`;
+
+    const slideXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld>
+    <p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="${H}"/><a:chOff x="0" y="0"/><a:chExt cx="${W}" cy="${H}"/></a:xfrm></p:grpSpPr>
+      ${titleXml}
+      ${descXml}
+      ${stepXml}
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="4" name="img${imgId}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+        <p:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+        <p:spPr><a:xfrm><a:off x="${imgX}" y="${imgY}"/><a:ext cx="${imgW}" cy="${imgH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+      </p:pic>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>`;
+
+    zip.folder('ppt/slides').file(`slide${imgId}.xml`, slideXml);
+
+    zip.folder('ppt/slides/_rels').file(`slide${imgId}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/img${imgId}.png"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`);
+  }
+
+  // ── Final slide: full matrix with all arrows in original colors ─────────
+  label.textContent = '製作完整策略圖...';
+  fill.style.width = '95%';
+
+  // Draw all arrows normally (full color)
+  drawLines();
+  await new Promise(r => setTimeout(r, 40));
+  const finalDataUrl = await captureFrameBase64();
+  const finalBase64  = finalDataUrl.replace(/^data:image\/png;base64,/, '');
+
+  const finalIdx = N + 1;
+  zip.folder('ppt/media').file(`img${finalIdx}.png`, finalBase64, { base64: true });
+
+  // Final slide XML (same layout, no step label, title says "完整策略矩陣")
+  const finalSlideXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld>
+    <p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="${H}"/><a:chOff x="0" y="0"/><a:chExt cx="${W}" cy="${H}"/></a:xfrm></p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="titleBg"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="${titleH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="${getComputedStyle(document.documentElement).getPropertyValue('--col-header').trim().replace('#','')}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>
+        <p:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="zh-TW" sz="3200" b="1" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>${escXml(titleText)}</a:t></a:r></a:p></p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="descBg"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="${in2emu(0.3)}" y="${H - descH}"/><a:ext cx="${W - in2emu(0.6)}" cy="${descH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>
+        <p:txBody><a:bodyPr anchor="t" wrap="square" lIns="0" rIns="0" tIns="${in2emu(0.1)}" bIns="0"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="l"/><a:r><a:rPr lang="zh-TW" sz="1400" dirty="0"><a:solidFill><a:srgbClr val="3d5a6a"/></a:solidFill></a:rPr><a:t>${escXml(document.getElementById('strategyDesc').value.trim())}</a:t></a:r></a:p></p:txBody>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="4" name="img${finalIdx}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+        <p:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+        <p:spPr><a:xfrm><a:off x="${imgX}" y="${imgY}"/><a:ext cx="${imgW}" cy="${imgH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+      </p:pic>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>`;
+
+  zip.folder('ppt/slides').file(`slide${finalIdx}.xml`, finalSlideXml);
+  zip.folder('ppt/slides/_rels').file(`slide${finalIdx}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/img${finalIdx}.png"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`);
+
+  // Update Content_Types and presentation to include the final slide
+  // Re-generate the presentation.xml with N+1 slides
+  const totalSlides = N + 1;
+  const sldIdLst2 = Array.from({length: totalSlides}, (_, i) =>
+    `<p:sldId id="${256 + i}" r:id="rId${i + 1}"/>`).join('');
+  zip.folder('ppt').file('presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" saveSubsetFonts="1">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rIdM1"/></p:sldMasterIdLst>
+  <p:sldIdLst>${sldIdLst2}</p:sldIdLst>
+  <p:sldSz cx="${W}" cy="${H}" type="screen16x9"/>
+  <p:notesSz cx="${H}" cy="${W}"/>
+</p:presentation>`);
+
+  const presRels2 = Array.from({length: totalSlides}, (_, i) =>
+    `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i+1}.xml"/>`).join('');
+  zip.folder('ppt/_rels').file('presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${presRels2}
+  <Relationship Id="rIdM1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+</Relationships>`);
+
+  // Update [Content_Types].xml to include final slide + image
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Default Extension="png"  ContentType="image/png"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+  ${Array.from({length: totalSlides}, (_, i) => `<Override PartName="/ppt/slides/slide${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')}
+  ${Array.from({length: totalSlides}, (_, i) => `<Override PartName="/ppt/media/img${i+1}.png" ContentType="image/png"/>`).join('')}
+</Types>`);
+
+  // ── Download ZIP as .pptx ──────────────────────────────────────────────
+  fill.style.width = '98%';
+  label.textContent = '下載中...';
+  await new Promise(r => setTimeout(r, 50));
+
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href     = url;
+  link.download = (titleText || '策略矩陣分析') + '.pptx';
+  link.click();
+  URL.revokeObjectURL(url);
+
+  overlay.classList.remove('active');
+}
+
+function escXml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+// ── Theme palettes ───────────────────────────────────────────────────────
+const THEMES = [
+  {
+    name: '紫藍（預設）',
+    color: '#7b6fa0',
+    vars: {
+      '--col-header':       '#7b6fa0',
+      '--col-header-light': '#c9b8d8',
+      '--row-label-bg':     '#ddd0ee',
+      '--row-desc-bg':      '#f0eaf8',
+      '--grid-line':        '#ddd8f0',
+      '--cell-hover':       '#ede8f8',
+      '--cell-text':        '#9890b8',
+      '--shadow':           '0 2px 12px rgba(100,80,160,0.10)',
+    }
+  },
+  {
+    name: '青綠',
+    color: '#2a8a7a',
+    vars: {
+      '--col-header':       '#2a8a7a',
+      '--col-header-light': '#a8d8ce',
+      '--row-label-bg':     '#c8eee6',
+      '--row-desc-bg':      '#eaf8f4',
+      '--grid-line':        '#c8ece6',
+      '--cell-hover':       '#e0f5f0',
+      '--cell-text':        '#a8cec8',
+      '--shadow':           '0 2px 12px rgba(40,130,110,0.10)',
+    }
+  },
+  {
+    name: '靛藍',
+    color: '#2e4a8a',
+    vars: {
+      '--col-header':       '#2e4a8a',
+      '--col-header-light': '#a8bcdc',
+      '--row-label-bg':     '#ccd8f0',
+      '--row-desc-bg':      '#eaeffb',
+      '--grid-line':        '#ccd8ee',
+      '--cell-hover':       '#e0e8f8',
+      '--cell-text':        '#b0bcd8',
+      '--shadow':           '0 2px 12px rgba(40,60,140,0.10)',
+    }
+  },
+  {
+    name: '玫瑰',
+    color: '#9a3060',
+    vars: {
+      '--col-header':       '#9a3060',
+      '--col-header-light': '#d8a8be',
+      '--row-label-bg':     '#ecc4d4',
+      '--row-desc-bg':      '#faeef4',
+      '--grid-line':        '#eed0dc',
+      '--cell-hover':       '#faeaf0',
+      '--cell-text':        '#d4b0c0',
+      '--shadow':           '0 2px 12px rgba(150,40,80,0.10)',
+    }
+  },
+  {
+    name: '暖橙',
+    color: '#a05020',
+    vars: {
+      '--col-header':       '#a05020',
+      '--col-header-light': '#d8b898',
+      '--row-label-bg':     '#eed8c0',
+      '--row-desc-bg':      '#faf4ec',
+      '--grid-line':        '#eeddc8',
+      '--cell-hover':       '#faf0e4',
+      '--cell-text':        '#d0bca8',
+      '--shadow':           '0 2px 12px rgba(160,80,30,0.10)',
+    }
+  },
+];
+
+let activeTheme = 0;
+
+function applyTheme(idx) {
+  activeTheme = idx;
+  const theme = THEMES[idx];
+  const root = document.documentElement;
+  Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  // Update swatch active state
+  document.querySelectorAll('.theme-swatch').forEach((s, i) => {
+    s.classList.toggle('active', i === idx);
+  });
+  // Rebuild table so th inline styles pick up new color
+  rebuildTable();
+}
+
+function renderThemePicker() {
+  const wrap = document.getElementById('themeSwatches');
+  wrap.innerHTML = '';
+  THEMES.forEach((t, i) => {
+    const s = document.createElement('div');
+    s.className = 'theme-swatch' + (i === activeTheme ? ' active' : '');
+    s.style.background = t.color;
+    s.title = t.name;
+    s.onclick = () => applyTheme(i);
+    wrap.appendChild(s);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('resize', drawLines);
+renderColEditor();
+buildTable();
+renderCompetitorBar();
+renderArrowList();
+renderThemePicker();
+applyTheme(0);
+updateStatus();
+document.getElementById('compNameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCompetitor();
+});
+</script>
+<div id="exportProgress">
+  <div class="progress-box">
+    <h3>🎬 正在產生動畫序列...</h3>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-label" id="progressLabel">準備中...</div>
+  </div>
+</div>
+<div style="text-align:center; padding: 18px 0 12px; font-size: 0.72rem; color: #aaaaaa; letter-spacing: 0.03em;">
+  本策略矩陣繪圖工具由政大企研所113級賴元平於2026/03/10開發
+</div>
+</body>
+</html>
