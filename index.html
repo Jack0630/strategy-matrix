@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>策略矩陣分析工具</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
@@ -23,6 +24,9 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html {
+    font-size: 150%;
+  }
   body {
     font-family: 'Noto Sans TC', sans-serif;
     background: var(--bg);
@@ -276,19 +280,19 @@
   thead th {
     background: var(--col-header); color: white; font-weight: 600;
     padding: 10px 8px; writing-mode: vertical-lr; text-orientation: mixed;
-    height: 110px; width: 68px; font-size: 0.88rem;
+    height: 110px; width: 68px; font-size: 0.82rem;
     text-align: center; vertical-align: middle;
   }
   thead th:first-child {
     writing-mode: horizontal-tb;
     height: auto; width: 130px;
-    background: var(--col-header); color: white; font-size: 0.88rem;
+    background: var(--col-header); color: white; font-size: 0.82rem;
     white-space: normal; padding: 10px 12px;
   }
   thead th:last-child {
     writing-mode: horizontal-tb;
     height: auto; width: 190px;
-    background: var(--col-header); color: white; font-size: 0.85rem;
+    background: var(--col-header); color: white; font-size: 0.82rem;
     white-space: normal; padding: 10px 12px;
   }
 
@@ -356,10 +360,10 @@
   <div class="strategy-input-area">
     <div class="strategy-title-row">
       <label>策略名稱</label>
-      <input type="text" id="strategyTitle" placeholder="例：2026 全球布局策略" />
+      <input type="text" id="strategyTitle" placeholder="例：2026 全球布局策略" autocomplete="off" />
     </div>
     <div class="strategy-desc-row">
-      <textarea id="strategyDesc" placeholder="策略說明（可選填）：簡述此策略的核心邏輯、目標市場、主要競爭手段…"></textarea>
+      <textarea id="strategyDesc" placeholder="例：聚焦高端市場，以垂直整合強化供應鏈競爭優勢…" autocomplete="off"></textarea>
     </div>
   </div>
 </div>
@@ -705,9 +709,14 @@ function getCellCenter(rowId, colIdx) {
   const td = document.getElementById(`cell-${rowId}-${colIdx}`);
   if (!td) return null;
   const container = document.getElementById('matrixContainer');
-  const cr = container.getBoundingClientRect();
-  const r = td.getBoundingClientRect();
-  return { x: r.left - cr.left + r.width/2, y: r.top - cr.top + r.height/2 };
+  // Use offsetLeft/offsetTop to get layout coords unaffected by CSS zoom/font-size scaling
+  let tdX = 0, tdY = 0, el = td;
+  while (el && el !== container) {
+    tdX += el.offsetLeft;
+    tdY += el.offsetTop;
+    el = el.offsetParent;
+  }
+  return { x: tdX + td.offsetWidth / 2, y: tdY + td.offsetHeight / 2 };
 }
 
 function drawLines() {
