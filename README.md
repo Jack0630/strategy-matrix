@@ -3,7 +3,7 @@
 > 「策略矩陣」（Strategic Matrix）是由政大管理學大師司徒達賢教授提出的分析工具，
 > 主要用於將企業複雜的競爭策略轉化為直觀、結構化的視覺地圖。
 
-🔗 **線上使用：** [https://你的帳號.github.io/strategy-matrix/](https://你的帳號.github.io/strategy-matrix/)
+🔗 **線上使用：** [https://jack0630.github.io/strategy-matrix/](https://jack0630.github.io/strategy-matrix/)
 
 ---
 
