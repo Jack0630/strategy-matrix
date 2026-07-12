@@ -20,6 +20,20 @@
     --grid-line: #ddd8f0;
     --cell-hover: #ede8f8;
     --shadow: 0 2px 12px rgba(100,80,160,0.10);
+
+    /* ── 矩陣配色（可透過右鍵選單切換預設配色）── */
+    --mx-leaf-bg: #FFFF00;
+    --mx-leaf-text: #00008B;
+    --mx-group-bg: #1565C0;
+    --mx-group-text: #FFFFFF;
+    --mx-corner-bg: #7FDBDA;
+    --mx-corner-text: #00008B;
+    --mx-rowlabel-bg: #7FDBDA;
+    --mx-rowlabel-text: #00008B;
+    --mx-product-header-bg: #D98C8C;
+    --mx-product-header-text: #4A0000;
+    --mx-product-cell-bg: #F6DCDC;
+    --mx-product-cell-hover: #eec5c5;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -304,8 +318,8 @@
   /* ── X軸欄頭：黃底（#FFFF00）、深藍字（#00008B）、粗體、文字直排 ──
      per 司徒達賢格式規範 */
   #matrixTable thead th.col-header {
-    background: #FFFF00;
-    color: #00008B;
+    background: var(--mx-leaf-bg);
+    color: var(--mx-leaf-text);
     font-weight: bold;
     padding: 10px 6px;
     writing-mode: vertical-lr;
@@ -321,8 +335,8 @@
   /* ── 兩層欄位標題（大類 + 細項）：大類為藍底白字橫排，細項維持原本黃底直排 ──
      兩者之間用較粗的黑色底線分開，視覺上明確區隔上下兩個區塊 */
   #matrixTable thead th.col-header-group {
-    background: #1565C0;
-    color: #FFFFFF;
+    background: var(--mx-group-bg);
+    color: var(--mx-group-text);
     font-weight: bold;
     writing-mode: horizontal-tb;
     height: auto;
@@ -335,8 +349,8 @@
     border-bottom: 3px solid #000000;
   }
   #matrixTable thead th.col-header-leaf {
-    background: #FFFF00;
-    color: #00008B;
+    background: var(--mx-leaf-bg);
+    color: var(--mx-leaf-text);
     font-weight: bold;
     writing-mode: vertical-lr;
     text-orientation: mixed;
@@ -351,8 +365,8 @@
 
   /* 左上角與右上角 corner 儲存格：淺青綠底，配合列標籤色系 */
   #matrixTable thead th.col-header-corner {
-    background: #7FDBDA;
-    color: #00008B;
+    background: var(--mx-corner-bg);
+    color: var(--mx-corner-text);
     font-weight: bold;
     writing-mode: horizontal-tb;
     height: auto;
@@ -362,11 +376,10 @@
     white-space: normal;
   }
 
-  /* ── Y軸左側標籤：淺青綠底（#7FDBDA）、深藍字（#00008B）、粗體 ──
-     per 司徒達賢格式規範 */
+  /* ── Y軸左側標籤：淺青綠底、深藍字、粗體 ── */
   td.row-label-left {
-    background: #7FDBDA;
-    color: #00008B;
+    background: var(--mx-rowlabel-bg);
+    color: var(--mx-rowlabel-text);
     font-weight: bold;
     width: 144px;
     padding: 10px 8px;
@@ -374,10 +387,10 @@
     text-align: center;
   }
 
-  /* Y軸右側標籤：同左側淺青綠底（per 規範） */
+  /* Y軸右側標籤：同左側配色 */
   td.row-label-right {
-    background: #7FDBDA;
-    color: #00008B;
+    background: var(--mx-rowlabel-bg);
+    color: var(--mx-rowlabel-text);
     font-weight: bold;
     width: 144px;
     padding: 10px 8px;
@@ -424,6 +437,59 @@
   .product-separator {
     border-left: 3px solid #000000 !important;
   }
+
+  /* 產品欄位（粗線以右）：欄頭與儲存格改用區隔色，與左側其他欄位區分 */
+  #matrixTable thead th.product-col-header {
+    background: var(--mx-product-header-bg) !important;
+    color: var(--mx-product-header-text) !important;
+  }
+  td.matrix-cell.product-col {
+    background: var(--mx-product-cell-bg) !important;
+  }
+  td.matrix-cell.product-col.used { background: var(--mx-product-cell-bg) !important; }
+  td.matrix-cell.product-col:hover { background: var(--mx-product-cell-hover) !important; }
+
+  /* ── 矩陣配色右鍵選單 ── */
+  .palette-menu {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    background: #ffffff;
+    border: 1px solid #d8d4e8;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    padding: 6px;
+    min-width: 190px;
+  }
+  .palette-menu.open { display: block; }
+  .palette-menu .palette-title {
+    font-size: 0.7rem;
+    color: var(--ink-light);
+    padding: 4px 8px 6px;
+    font-weight: 500;
+  }
+  .palette-menu .palette-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--ink);
+  }
+  .palette-menu .palette-option:hover { background: var(--cell-hover); }
+  .palette-menu .palette-option.active { background: #ede8f8; font-weight: 700; }
+  .palette-menu .palette-swatch {
+    display: flex;
+    flex-shrink: 0;
+    width: 34px;
+    height: 16px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.15);
+  }
+  .palette-menu .palette-swatch span { flex: 1; }
 
   .instructions { font-size: 0.74rem; color: var(--ink-light); line-height: 1.7; }
 
@@ -548,8 +614,11 @@
 
 <p class="instructions">
   ✏️ <b>繪製模式：</b>點第一格（起點，變黃色）→ 再點第二格（終點）→ 自動畫出帶箭頭的連線<br>
-  若想取消起點，再次點擊黃色格子即可
+  若想取消起點，再次點擊黃色格子即可<br>
+  🎨 在矩陣格子上按右鍵可切換預設配色
 </p>
+
+<div id="paletteMenu" class="palette-menu"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -588,6 +657,112 @@ let productSepIdx = 13;
 
 // 是否顯示左側「產業矩陣」欄標籤文字（預設隱藏，僅顯示策略矩陣）
 let showIndustryLabels = false;
+
+// ── 矩陣配色預設（可在矩陣格子上按右鍵切換）─────────────────────────────
+const COLOR_PALETTES = [
+  {
+    name: '標準規範（黃藍）',
+    vars: {
+      '--mx-leaf-bg': '#FFFF00', '--mx-leaf-text': '#00008B',
+      '--mx-group-bg': '#1565C0', '--mx-group-text': '#FFFFFF',
+      '--mx-corner-bg': '#7FDBDA', '--mx-corner-text': '#00008B',
+      '--mx-rowlabel-bg': '#7FDBDA', '--mx-rowlabel-text': '#00008B',
+      '--mx-product-header-bg': '#D98C8C', '--mx-product-header-text': '#4A0000',
+      '--mx-product-cell-bg': '#F6DCDC', '--mx-product-cell-hover': '#eec5c5',
+    },
+  },
+  {
+    name: '冷色簡約',
+    vars: {
+      '--mx-leaf-bg': '#DCE6F2', '--mx-leaf-text': '#1f3a5f',
+      '--mx-group-bg': '#4A6FA5', '--mx-group-text': '#FFFFFF',
+      '--mx-corner-bg': '#C7D6E8', '--mx-corner-text': '#1f3a5f',
+      '--mx-rowlabel-bg': '#C7D6E8', '--mx-rowlabel-text': '#1f3a5f',
+      '--mx-product-header-bg': '#E3B8B8', '--mx-product-header-text': '#5c2626',
+      '--mx-product-cell-bg': '#F7E6E6', '--mx-product-cell-hover': '#eecfcf',
+    },
+  },
+  {
+    name: '高對比黑白',
+    vars: {
+      '--mx-leaf-bg': '#E0E0E0', '--mx-leaf-text': '#111111',
+      '--mx-group-bg': '#333333', '--mx-group-text': '#FFFFFF',
+      '--mx-corner-bg': '#CCCCCC', '--mx-corner-text': '#111111',
+      '--mx-rowlabel-bg': '#CCCCCC', '--mx-rowlabel-text': '#111111',
+      '--mx-product-header-bg': '#C97B7B', '--mx-product-header-text': '#3a0000',
+      '--mx-product-cell-bg': '#F0D6D6', '--mx-product-cell-hover': '#e3baba',
+    },
+  },
+];
+let colorPaletteIdx = 0; // 預設採用「標準規範（黃藍）」；可右鍵切換其他配色
+
+function applyPalette(idx) {
+  const palette = COLOR_PALETTES[idx];
+  if (!palette) return;
+  colorPaletteIdx = idx;
+  Object.entries(palette.vars).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+}
+
+// ── 矩陣配色右鍵選單 ─────────────────────────────────────────────────────
+function buildPaletteMenu() {
+  const menu = document.getElementById('paletteMenu');
+  menu.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'palette-title';
+  title.textContent = '選擇矩陣配色';
+  menu.appendChild(title);
+
+  COLOR_PALETTES.forEach((palette, idx) => {
+    const opt = document.createElement('div');
+    opt.className = 'palette-option' + (idx === colorPaletteIdx ? ' active' : '');
+    const swatch = document.createElement('div');
+    swatch.className = 'palette-swatch';
+    [palette.vars['--mx-leaf-bg'], palette.vars['--mx-group-bg'], palette.vars['--mx-product-header-bg']]
+      .forEach(color => {
+        const s = document.createElement('span');
+        s.style.background = color;
+        swatch.appendChild(s);
+      });
+    const label = document.createElement('span');
+    label.textContent = palette.name;
+    opt.appendChild(swatch);
+    opt.appendChild(label);
+    opt.addEventListener('click', () => {
+      applyPalette(idx);
+      buildPaletteMenu();
+      saveState();
+      closePaletteMenu();
+    });
+    menu.appendChild(opt);
+  });
+}
+
+function openPaletteMenu(x, y) {
+  buildPaletteMenu();
+  const menu = document.getElementById('paletteMenu');
+  menu.classList.add('open');
+  const maxX = window.innerWidth - menu.offsetWidth - 8;
+  const maxY = window.innerHeight - menu.offsetHeight - 8;
+  menu.style.left = Math.min(x, Math.max(0, maxX)) + 'px';
+  menu.style.top  = Math.min(y, Math.max(0, maxY)) + 'px';
+}
+
+function closePaletteMenu() {
+  document.getElementById('paletteMenu').classList.remove('open');
+}
+
+document.getElementById('matrixContainer').addEventListener('contextmenu', e => {
+  const cell = e.target.closest('td.matrix-cell, th.col-header, th.col-header-leaf, th.col-header-group, th.col-header-corner');
+  if (!cell) return;
+  e.preventDefault();
+  openPaletteMenu(e.clientX, e.clientY);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#paletteMenu')) closePaletteMenu();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePaletteMenu();
+});
 
 function toggleIndustryMatrix() {
   showIndustryLabels = !showIndustryLabels;
@@ -967,6 +1142,7 @@ function buildTable() {
       catTh.textContent = group.category;
       catTh.colSpan = group.items.length;
       if (flatIdx === productSepIdx) { catTh.classList.add('product-separator'); catTh.style.borderLeft = '3px solid #000000'; }
+      if (flatIdx >= productSepIdx) catTh.classList.add('product-col-header');
       row1.appendChild(catTh);
 
       group.items.forEach((item, j) => {
@@ -975,6 +1151,7 @@ function buildTable() {
         leafTh.className = 'col-header-leaf';
         leafTh.textContent = item;
         if (idx === productSepIdx) { leafTh.classList.add('product-separator'); leafTh.style.borderLeft = '3px solid #000000'; }
+        if (idx >= productSepIdx) leafTh.classList.add('product-col-header');
         row2.appendChild(leafTh);
       });
     } else {
@@ -984,6 +1161,7 @@ function buildTable() {
       th.textContent = group.items[0];
       if (hasCategories) th.rowSpan = 2;
       if (flatIdx === productSepIdx) { th.classList.add('product-separator'); th.style.borderLeft = '3px solid #000000'; }
+      if (flatIdx >= productSepIdx) th.classList.add('product-col-header');
       row1.appendChild(th);
     }
     flatIdx += group.items.length;
@@ -1023,6 +1201,8 @@ function buildTable() {
       td.style.cursor = currentMode === 'draw' ? 'crosshair' : 'default';
       // 第14欄起加粗左邊框（產品欄分隔）
       if (ci === productSepIdx) { td.classList.add('product-separator'); td.style.borderLeft = '3px solid #000000'; }
+      // 產品欄位（粗線以右）：儲存格改用玫瑰紅色系
+      if (ci >= productSepIdx) td.classList.add('product-col');
 
       // 座標碼文字：藍色粗體底線（per 規範）
       const code = document.createElement('span');
@@ -1510,16 +1690,15 @@ async function captureFrameBase64() {
 // ── Export PPTX (self-contained, no external lib) ────────────────────────
 // Builds a valid PPTX (Office Open XML ZIP) from scratch using JSZip
 async function exportPptx() {
-  const ci = activeIdx;
-  const compArrows = arrows[ci];
+  // 匯出所有策略構想（競爭者）的箭頭，依競爭者順序合併成同一份 PPTX
+  const allSteps = arrows.flatMap((compArrows, ci) => compArrows.map(arrow => ({ ci, arrow })));
 
-  if (!compArrows || compArrows.length === 0) {
-    alert(`「${competitors[ci].name}」尚未繪製任何箭頭。\n請先為此策略繪製箭頭後再匯出 PPTX。`);
+  if (allSteps.length === 0) {
+    alert('尚未繪製任何箭頭。\n請先繪製箭頭後再匯出 PPTX。');
     return;
   }
 
   const titleText = document.getElementById('strategyTitle').value.trim();
-  const allSteps  = compArrows.map(arrow => ({ ci, arrow }));
 
   const overlay = document.getElementById('exportProgress');
   const fill    = document.getElementById('progressFill');
@@ -1688,7 +1867,8 @@ async function exportPptx() {
     // ── 說明文字框：矩陣下方、左對齊、含步驟資訊 ──────────────────────
     // 每一步驟顯示的是該箭頭自己的補充說明，而非整體策略說明（策略說明僅保留在最後總覽頁）
     const stepNote   = (allSteps[i].arrow.note || '').trim();
-    const stepPrefix = `（Step ${step} / ${N}）`;
+    const compName   = competitors[allSteps[i].ci].name;
+    const stepPrefix = `（Step ${step} / ${N}）${compName}`;
     const descLine = stepNote ? stepPrefix + '　' + stepNote : stepPrefix;
     const descXml = `
     <p:sp>
@@ -1855,6 +2035,7 @@ function saveState() {
       activeIdx,
       productSepIdx,
       showIndustryLabels,
+      colorPaletteIdx,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch(e) {}
@@ -1885,6 +2066,7 @@ function loadState() {
     if (typeof state.activeIdx     === 'number') activeIdx     = Math.min(state.activeIdx, competitors.length - 1);
     if (typeof state.productSepIdx === 'number') productSepIdx = state.productSepIdx;
     if (typeof state.showIndustryLabels === 'boolean') showIndustryLabels = state.showIndustryLabels;
+    if (typeof state.colorPaletteIdx === 'number' && COLOR_PALETTES[state.colorPaletteIdx]) colorPaletteIdx = state.colorPaletteIdx;
     while (arrows.length < competitors.length) arrows.push([]);
     while (arrows.length > competitors.length) arrows.pop();
     return true;
@@ -1931,6 +2113,7 @@ function clearLocalStorage() {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 loadState();
+applyPalette(colorPaletteIdx);
 document.getElementById('industryToggleBtn').textContent = showIndustryLabels ? '策略矩陣＋產業矩陣' : '策略矩陣';
 window.addEventListener('resize', drawLines);
 renderColEditor();
